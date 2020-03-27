@@ -1,16 +1,42 @@
-import json
-import pandas
-import pathlib
+from datetime import datetime
 import requests
+import pathlib
+import pandas
+import json
 
 CURRENT_PATH = pathlib.Path(__file__).parent.absolute()
-CSV_FILE_PATH = pathlib.Path(CURRENT_PATH, 'history.csv')
-API_ENDPOINT = 'https://thevirustracker.com/timeline/map-data.json'
+COUNTRIES_JSON_PATH = pathlib.Path(CURRENT_PATH, 'countries.json')
 UNREASONABLE_FAR_DATE = '12/12/40'
+CSSE_TOTAL_DATAFILE = {
+        'original_version_path': pathlib.Path(CURRENT_PATH, 'csse_total.csv'),
+        'url': 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv',
+        'restructured_version_path': pathlib.Path(CURRENT_PATH, 'total_history.csv'),
+}
+CSSE_DEATHS_DATAFILE = {
+        'original_version_path': pathlib.Path(CURRENT_PATH, 'csse_deaths.csv'),
+        'url': 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv',
+        'restructured_version_path': pathlib.Path(CURRENT_PATH, 'deaths_history.csv'),
+}
+CSSE_RECOVERIES_DATAFILE = {
+        'original_version_path': pathlib.Path(CURRENT_PATH, 'csse_recovered.csv'),
+        'url': 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv',
+        'restructured_version_path': pathlib.Path(CURRENT_PATH, 'recovered_history.csv'),
+}
 
-def total_cases_for(country):
-    if country['totalcases'] == '': return 0
-    return country['totalcases']
+def download_data(datafile_options):
+    r = requests.get(datafile_options['url'])
+    file = open(datafile_options['original_version_path'], 'w')
+    file.write(r.text)
+    file.close()
+
+def remove_unused_columns(dataframe):
+    del dataframe['Lat']
+    del dataframe['Long']
+    del dataframe['Province/State']
+
+def reindex(dataframe):
+    dataframe.index.name = 'date'
+    dataframe.reset_index(inplace=True)
 
 def get_index(arr):
     try:
@@ -18,55 +44,55 @@ def get_index(arr):
     except:
         return len(arr)-1
 
-def get_country_names(dataframe):
-    return list(map(lambda x: x['countrylabel'].lower(), dataframe.at[0, 'data']))
-
-def restructure(dataframe):
-    dataframe['data'] = dataframe['data'].apply(lambda x: list(map(total_cases_for, x)))
-
-    # Due to some inconsistency in the data coming from the server
-    dataframe['date'] = dataframe['date'].apply(lambda x: x.replace('\r', ''))
-
-def construct_dataframe_from(dataframe):
-    country_names = get_country_names(dataframe)
-
-    restructure(dataframe)
-
-    new_dataframe = pandas.DataFrame(dataframe.data.to_list(), columns=country_names)
-    new_dataframe['date'] = dataframe['date']
-    return new_dataframe
-
 def row_to_append(dataframe):
-    row = []
+    row = [UNREASONABLE_FAR_DATE]
 
-    for (columnName, columnData) in dataframe.iteritems():
-        if not (columnName == "date"): row.append(list(dataframe['date'].values)[get_index(columnData.values)])
+    for (column_name, column_data) in dataframe.iteritems():
+        if not (column_name == "date"): row.append(dataframe['date'].values[get_index(column_data.values)])
 
-    row.append(UNREASONABLE_FAR_DATE)
     return row
 
-def insert_dates_row_to(dataframe):
+def insert_dates_row(dataframe):
     dataframe.loc[-1] = row_to_append(dataframe)
     dataframe.index += 1
     dataframe.sort_index(inplace=True)
 
-def get_dataframe():
-    r = requests.get(API_ENDPOINT)
-    return pandas.DataFrame(r.json())
+def append_today_row(dataframe):
+    row = [datetime.now().strftime("%-m/%d/%y")]
+    row += list(dataframe.loc[dataframe.shape[0]-1].values)[1:]
+    dataframe = dataframe.append(pandas.DataFrame([row], columns=dataframe.columns))
+    return dataframe
 
-def write_csv(dataframe):
-    dataframe.to_csv(CSV_FILE_PATH, index=False)
+def missing_today_data(dataframe):
+    return not dataframe.iloc[-1]['date'] == datetime.now().strftime("%-m/%d/%y")
 
-def main():
-    dataframe = get_dataframe()
+def restructure_data(datafile_options):
+    dataframe = pandas.read_csv(datafile_options['original_version_path'])
+    remove_unused_columns(dataframe)
 
-    new_dataframe = construct_dataframe_from(dataframe)
+    dataframe['Country/Region'] = [x.lower() for x in dataframe['Country/Region'].values]
+    dataframe = dataframe.groupby(dataframe['Country/Region']).sum().transpose()
 
-    # For data parsing purposes. Blame my reduced knowledge of gnuplot.
-    insert_dates_row_to(new_dataframe)
+    reindex(dataframe)
 
-    write_csv(new_dataframe)
+    insert_dates_row(dataframe)
 
+    if missing_today_data(dataframe): dataframe = append_today_row(dataframe)
 
-if __name__ == '__main__':
-    main()
+    dataframe.to_csv(datafile_options['restructured_version_path'], index=False)
+
+def download_and_restructure_cases_data():
+    download_data(CSSE_TOTAL_DATAFILE)
+    restructure_data(CSSE_TOTAL_DATAFILE)
+
+def download_and_restructure_deaths_data():
+    download_data(CSSE_DEATHS_DATAFILE)
+    restructure_data(CSSE_DEATHS_DATAFILE)
+
+def download_and_restructure_recoveries_data():
+    download_data(CSSE_RECOVERIES_DATAFILE)
+    restructure_data(CSSE_RECOVERIES_DATAFILE)
+
+download_and_restructure_cases_data()
+download_and_restructure_deaths_data()
+download_and_restructure_recoveries_data()
