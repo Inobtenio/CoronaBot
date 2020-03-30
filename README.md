@@ -3,16 +3,22 @@ CoronaBot is a Telegram bot that helps people visualize the impact of COVID-19 w
 
 You can get total cases:
 
+
 ![Peru total cases graphic](https://i.imgur.com/ZGEOG8k.jpg)
 
 New confirmed cases:
+
 ![Spain new confirmed cases](https://i.imgur.com/a6ztaKz.jpg)
 
 Death numbers:
+
 ![Japan death numbers](https://i.imgur.com/kWjDkG0.jpg)
 
 And recovered numbers:
+
 ![Canada recovered numbers](https://i.imgur.com/QRdeFAv.jpg)
+
+
 
 Just write to @SARS_CoV_2_bot on Telegram or add it to any chat you want.
 
