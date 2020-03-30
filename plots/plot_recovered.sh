@@ -4,7 +4,7 @@ country_label="$(tr [A-Z] [a-z] <<< "$1")"
 pwd=$(pwd)
 
 gnuplot <<- EOF
-  data_file_name = 'recovered_history.csv'
+  data_file_name = '${pwd}/recovered_history.csv'
 
   time_format = '%m-%d-%y'
 
@@ -30,7 +30,7 @@ gnuplot <<- EOF
 
   set title 'COVID-19 Incidence in ${1} [max. 21 days back]'
 
-  set terminal pngcairo enhanced background rgb 'black' size 720, 640
+  set terminal png enhanced background rgb 'black' size 720, 640
 
   set ylabel '' tc rgb 'grey'
 

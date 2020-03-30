@@ -1,3 +1,7 @@
 pandas==1.0.3
 python-telegram-bot==12.5
 requests==2.23.0
+slackclient==2.5.0
+slackeventsapi==2.1.0
+Flask==1.1.1
+certifi

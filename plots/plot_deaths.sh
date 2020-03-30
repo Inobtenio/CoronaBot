@@ -4,13 +4,13 @@ country_label="$(tr [A-Z] [a-z] <<< "$1")"
 pwd=$(pwd)
 
 gnuplot <<- EOF
-  data_file_name = 'total_history.csv'
+  data_file_name = '${pwd}/deaths_history.csv'
 
   time_format = '%m-%d-%y'
 
   today_date = strftime(time_format, time(0)-18000)
 
-  set output sprintf('${pwd}/plot/new/${country_label} - %s.png', today_date)
+  set output sprintf('${pwd}/plot/deaths/${country_label} - %s.png', today_date)
 
   set datafile separator ','
 
@@ -30,7 +30,7 @@ gnuplot <<- EOF
 
   set title 'COVID-19 Incidence in ${1} [max. 21 days back]'
 
-  set terminal pngcairo enhanced background rgb 'black' size 720, 640
+  set terminal png enhanced background rgb 'black' size 720, 640
 
   set ylabel '' tc rgb 'grey'
 
@@ -78,12 +78,6 @@ gnuplot <<- EOF
 
   not_earlier_than_first_day(x) = strptime(time_format, x) < start_float ? NaN : x
 
-  delta(x) = ( y_delta = x - previous_value, previous_value = x, y_delta)
-
-  previous_value = NaN
-
-  previous(x) = sprintf("%.0f", y_delta)
-
 
 
   set xrange[first_day:end_float]
@@ -91,7 +85,7 @@ gnuplot <<- EOF
 
 
   plot \
-  data_file_name using (not_earlier_than_first_day(stringcolumn(1))):(delta(column('${country_label}'))) w boxes lc rgb 'blue' ti 'New confirmed cases', \
+  data_file_name using (not_earlier_than_first_day(stringcolumn(1))):(column('${country_label}')) w boxes lc rgb '#ff584d' ti 'Deaths', \
   \
-  '' using (not_earlier_than_first_day(stringcolumn(1))):(delta(column('${country_label}'))):(previous(column('${country_label}'))) with labels textcolor rgb 'grey' font ', 7' offset char 0,1 notitle, 
+  '' using (not_earlier_than_first_day(stringcolumn(1))):(column('${country_label}')):(column('${country_label}')) with labels textcolor rgb 'grey' font ', 7' offset char 0,1 notitle, 
 EOF

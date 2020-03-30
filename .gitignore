@@ -3,3 +3,5 @@ dummy
 __pycache__
 plot/
 env/
+tags
+.envrc

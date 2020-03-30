@@ -14,6 +14,8 @@ FALLBACK_API_ENDPOINT = 'https://thevirustracker.com/free-api?countryTotal={}'
 ENDPOINT_HEADERS = {'User-Agent': 'CoronaBot'}
 
 class Plotter(object):
+    DATAFILE_PATH = ''
+    BASH_COMMAND = ''
 
     def __init__(self, country):
         with open(COUNTRIES_JSON_PATH, 'rb') as file:
@@ -50,7 +52,7 @@ class Plotter(object):
 
 
 class TotalPlotter(Plotter):
-    BASH_COMMAND = 'bash plot_total.sh {} {}'
+    BASH_COMMAND = 'bash ./plots/plot_total.sh {} {}'
     DATAFILE_PATH = pathlib.Path(CURRENT_PATH, 'total_history.csv')
 
     def __init__(self, country, days):
@@ -86,7 +88,7 @@ class TotalPlotter(Plotter):
 
 
 class NewCasesPlotter(TotalPlotter):
-    BASH_COMMAND = 'bash plot_new.sh {}'
+    BASH_COMMAND = 'bash ./plots/plot_new.sh {}'
 
     def __init__(self, country):
         super().__init__(country, 0)
@@ -96,7 +98,7 @@ class NewCasesPlotter(TotalPlotter):
 
 
 class DeathsPlotter(Plotter):
-    BASH_COMMAND = 'bash plot_deaths.sh {}'
+    BASH_COMMAND = 'bash ./plots/plot_deaths.sh {}'
     DATAFILE_PATH = pathlib.Path(CURRENT_PATH, 'deaths_history.csv')
 
     def country_total_deaths(self):
@@ -107,7 +109,7 @@ class DeathsPlotter(Plotter):
 
 
 class RecoveriesPlotter(Plotter):
-    BASH_COMMAND = 'bash plot_recovered.sh {}'
+    BASH_COMMAND = 'bash ./plots/plot_recovered.sh {}'
     DATAFILE_PATH = pathlib.Path(CURRENT_PATH, 'recovered_history.csv')
 
     def country_total_recovered(self):

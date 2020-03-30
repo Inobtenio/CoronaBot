@@ -5,13 +5,13 @@ days_ago=${2}
 pwd=$(pwd)
 
 gnuplot <<- EOF
-  data_file_name = 'total_history.csv'
+  data_file_name = '${pwd}/total_history.csv'
 
   time_format = '%m-%d-%y'
 
   today_date = strftime(time_format, time(0)-18000)
 
-  set output sprintf('${pwd}/plot/total/${country_label} ${days_ago} - %s.png', today_date)
+	set output sprintf('${pwd}/plot/total/${country_label} ${days_ago} - %s.png', today_date)
 
   set datafile separator ','
 
@@ -30,8 +30,8 @@ gnuplot <<- EOF
   set size ratio 0.45
 
   set title 'COVID-19 Incidence in ${1}'
-
-  set terminal pngcairo enhanced background rgb 'black' size 720, 640
+	
+	set terminal png enhanced background rgb 'black' size 720, 640
 
   set ylabel '' tc rgb 'grey'
 
