@@ -21,9 +21,13 @@ class Plotter(object):
 
         self.country = country
 
-    def get_data_for(self, attribute):
-        r = requests.get(FALLBACK_API_ENDPOINT.format(self.country_code()), headers=ENDPOINT_HEADERS)
-        return r.json()['countrydata'][0][attribute]
+    def get_data_for(self, default_api_key, fallback_api_key):
+        try:
+            r = requests.get(DEFAULT_API_ENDPOINT, headers=ENDPOINT_HEADERS)
+            return [entry[default_api_key] for entry in r.json() if entry['country'] == self.country_name()][0]
+        except:
+            r = requests.get(FALLBACK_API_ENDPOINT.format(self.country_code()), headers=ENDPOINT_HEADERS)
+            return r.json()['countrydata'][0][fallback_api_key]
 
     def country_name(self):
         return self.countries[self.country]['name']
@@ -50,7 +54,7 @@ class Plotter(object):
 
 
 class TotalPlotter(Plotter):
-    BASH_COMMAND = 'bash plot_total.sh {} {}'
+    BASH_COMMAND = 'bash plot_total.sh "{}" "{}"'
     DATAFILE_PATH = pathlib.Path(CURRENT_PATH, 'total_history.csv')
 
     def __init__(self, country, days):
@@ -58,7 +62,7 @@ class TotalPlotter(Plotter):
         super().__init__(country)
 
     def country_total_cases(self):
-        return self.get_data_for('total_cases')
+        return self.get_data_for('cases', 'total_cases')
 
     def modify_data(self):
         self.dataframe.at[self.dataframe.shape[0]-1, "{}".format(self.country)] = self.country_total_cases()
@@ -86,7 +90,7 @@ class TotalPlotter(Plotter):
 
 
 class NewCasesPlotter(TotalPlotter):
-    BASH_COMMAND = 'bash plot_new.sh {}'
+    BASH_COMMAND = 'bash plot_new.sh "{}"'
 
     def __init__(self, country):
         super().__init__(country, 0)
@@ -96,22 +100,22 @@ class NewCasesPlotter(TotalPlotter):
 
 
 class DeathsPlotter(Plotter):
-    BASH_COMMAND = 'bash plot_deaths.sh {}'
+    BASH_COMMAND = 'bash plot_deaths.sh "{}"'
     DATAFILE_PATH = pathlib.Path(CURRENT_PATH, 'deaths_history.csv')
 
     def country_total_deaths(self):
-        return self.get_data_for('total_deaths')
+        return self.get_data_for('deaths', 'total_deaths')
 
     def modify_data(self):
         self.dataframe.at[self.dataframe.shape[0]-1, "{}".format(self.country)] = self.country_total_deaths()
 
 
 class RecoveriesPlotter(Plotter):
-    BASH_COMMAND = 'bash plot_recovered.sh {}'
+    BASH_COMMAND = 'bash plot_recovered.sh "{}"'
     DATAFILE_PATH = pathlib.Path(CURRENT_PATH, 'recovered_history.csv')
 
     def country_total_recovered(self):
-        return self.get_data_for('total_recovered')
+        return self.get_data_for('recovered', 'total_recovered')
 
     def modify_data(self):
         self.dataframe.at[self.dataframe.shape[0]-1, "{}".format(self.country)] = self.country_total_recovered()
