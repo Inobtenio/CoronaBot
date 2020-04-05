@@ -96,5 +96,5 @@ gnuplot <<- EOF
   '' using (not_earlier_than_first_day(stringcolumn(1))):(column('${country_label}')):(column('${country_label}')) with labels textcolor rgb 'grey' font ', 7' offset char 0,1 notitle, 
 
 
-  print("${HOST}".output_file_relative_path)
+  print(output_file_relative_path)
 EOF

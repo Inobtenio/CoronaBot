@@ -154,5 +154,5 @@ gnuplot <<- EOF
   '' using 1:'${country_label}' ti '    ' lc rgb '#00000000' ps 0
 
 
-  print("${HOST}".output_file_relative_path)
+  print(output_file_relative_path)
 EOF

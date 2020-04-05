@@ -2,4 +2,5 @@ fit.log
 dummy
 __pycache__
 plot/
+plots/
 env/

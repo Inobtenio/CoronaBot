@@ -5,7 +5,9 @@ import pandas
 import pathlib
 import requests
 import subprocess
+import urllib.parse
 
+HOST = os.environ['HOST']
 CURRENT_PATH = pathlib.Path(__file__).parent.absolute()
 LOCAL_COUNTRY = 'peru'
 LOCAL_DATAFILE_PATH = pathlib.Path(CURRENT_PATH, '{}.csv'.format(LOCAL_COUNTRY))
@@ -59,7 +61,7 @@ class Plotter(object):
     def plot(self):
         result = self.run_command()
         if result.returncode == 1: raise PlottingError('Unknown')
-        return decode(result.stdout)
+        return HOST + urllib.parse.quote(decode(result.stdout))
 
 
 class TotalPlotter(Plotter):
