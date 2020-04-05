@@ -5,7 +5,7 @@ import pandas
 import pathlib
 import requests
 import subprocess
-import urllib.parse
+from utils import url, decode, no_cache_params
 
 HOST = os.environ['HOST']
 CURRENT_PATH = pathlib.Path(__file__).parent.absolute()
@@ -15,9 +15,6 @@ COUNTRIES_JSON_PATH = pathlib.Path(CURRENT_PATH, 'countries.json')
 DEFAULT_API_ENDPOINT = 'https://coronavirus-19-api.herokuapp.com/countries'
 FALLBACK_API_ENDPOINT = 'https://thevirustracker.com/free-api?countryTotal={}'
 ENDPOINT_HEADERS = {'User-Agent': 'CoronaBot'}
-
-def decode(bytes):
-    return bytes.decode().strip()
 
 class Plotter(object):
 
@@ -61,7 +58,7 @@ class Plotter(object):
     def plot(self):
         result = self.run_command()
         if result.returncode == 1: raise PlottingError('Unknown')
-        return HOST + urllib.parse.quote(decode(result.stdout))
+        return url(HOST, decode(result.stdout), no_cache_params())
 
 
 class TotalPlotter(Plotter):
