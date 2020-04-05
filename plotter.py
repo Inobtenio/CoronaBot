@@ -76,7 +76,7 @@ class TotalPlotter(Plotter):
         return self.get_data_for('cases', 'total_cases')
 
     def modify_data(self):
-        self.dataframe.at[self.dataframe.shape[0]-1, "{}".format(self.country)] = self.country_total_cases()
+        self.dataframe.at[self.dataframe.shape[0]-1, '{}'.format(self.country)] = self.country_total_cases()
 
     def modify_with_local_data(self):
         if not self.country == LOCAL_COUNTRY: return
@@ -118,7 +118,7 @@ class DeathsPlotter(Plotter):
         return self.get_data_for('deaths', 'total_deaths')
 
     def modify_data(self):
-        self.dataframe.at[self.dataframe.shape[0]-1, "{}".format(self.country)] = self.country_total_deaths()
+        self.dataframe.at[self.dataframe.shape[0]-1, '{}'.format(self.country)] = self.country_total_deaths()
 
 
 class RecoveredPlotter(Plotter):
@@ -129,7 +129,7 @@ class RecoveredPlotter(Plotter):
         return self.get_data_for('recovered', 'total_recovered')
 
     def modify_data(self):
-        self.dataframe.at[self.dataframe.shape[0]-1, "{}".format(self.country)] = self.country_total_recovered()
+        self.dataframe.at[self.dataframe.shape[0]-1, '{}'.format(self.country)] = self.country_total_recovered()
 
 
 class PlottingError(Exception):
@@ -150,10 +150,17 @@ class CommandValidator(object):
     with open(COUNTRIES_JSON_PATH, 'rb') as file:
         COUNTRY_NAMES = [*json.load(file).keys()]
 
-    def validate(command, country, days):
-        if not command in CommandValidator.VALID_COMMANDS: raise CommandError(f"I don't know that command. Accepted ones are {CommandValidator.VALID_COMMANDS}.")
-        if not country in CommandValidator.COUNTRY_NAMES: raise CountryError("That's a country I have no data for.")
-        if not days in range(0,8): raise DaysError("I can not go that far back.")
+    def valid_number(self, target):
+        try:
+            number = int(target)
+            return number in range(0,8)
+        except ValueError:
+            return False
+
+    def validate(self, command, country, days):
+        if not command in self.VALID_COMMANDS: raise CommandError(f'I don\'t recognize that command. Accepted ones are {self.VALID_COMMANDS}.')
+        if not country in self.COUNTRY_NAMES: raise CountryError('That\'s a country I have no data for.')
+        if not self.valid_number(days): raise DaysError('Not a valid value for <days_back>. Use a number between 0 and 7 instead.')
 
 
 class CommandPlotter:
@@ -165,7 +172,8 @@ class CommandPlotter:
 
 class CommandPlotterFactory:
     def get_command_plotter(self, command, country, days):
-        CommandValidator.validate(command, country, days)
+        if not days: days = 0
+        CommandValidator().validate(command, country, days)
         if command == 'total':
             return TotalPlotter(country, days)
         if command == 'new':
