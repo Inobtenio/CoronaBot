@@ -1,22 +1,16 @@
 import os
 import re
-import json
 import logging
-import pathlib
-from plotter import CommandPlotter
-from datetime import datetime
+from plotter import CommandPlotter, CommandError, CountryError, DaysError, PlottingError
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
 ACCESS_TOKEN = os.environ['TELEGRAM_BOT_ACCESS_TOKEN']
 COMMAND_FORMAT = "([c,C])oronabot\s*:\s*\w*\s*,\s*\w*\s*(,\s*-?\d+)?"
-CURRENT_PATH = pathlib.Path(__file__).parent.absolute()
-COUNTRIES_JSON_PATH = pathlib.Path(CURRENT_PATH, 'countries.json')
-COMMAND_TYPES = ['total', 'new', 'deaths', 'recovered']
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO);
 logger = logging.getLogger(__name__)
 
-def info(update, context):
+def start(update, context):
     text = """Hi, I'm the CoronaBot. You can ask for current info about the novel coronavirus in your area.
 
 Just type: Coronabot: <command>, <country>, <days_back>
@@ -39,72 +33,49 @@ For example:
 Happy plotting."""
     context.bot.send_message(chat_id=update.effective_chat.id, text=text);
 
-def country_names():
-    with open(COUNTRIES_JSON_PATH, 'rb') as file:
-        return [*json.load(file).keys()]
+def info(update, context):
+    text = """Created by: Kevin Martin
+knmartinm@gmail.com
+@Inobtenio
+"""
+    context.bot.send_message(chat_id=update.effective_chat.id, text=text);
 
-def get_command_type(message):
-    args = message[message.index(":")+1:].split(',')
+def split_args(message):
+    return message[message.index(":")+1:].split(',')
+
+def get_command(message):
+    args = split_args(message)
     return args[0].strip().lower()
 
 def get_country(message):
-    args = message[message.index(":")+1:].split(',')
+    args = split_args(message)
     return args[1].strip().lower()
 
 def get_days(message):
-    args = message[message.index(":")+1:].split(',')
+    args = split_args(message)
     if (len(args) == 3): return abs(int(args[2].strip()))
     return 0
 
 def plot(update, context):
-    message = update.message.text
-    match = re.search(COMMAND_FORMAT, message)
+    request_text = update.message.text
+    match = re.search(COMMAND_FORMAT, request_text)
 
     if not match: return
 
-    command_type = get_command_type(message)
+    send_text(update, context, "Got it... Please wait for me :)")
 
-    if not command_type in COMMAND_TYPES:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="I'm afraid I can't help you with that.");
-        return
+    try:
+        plot_file_url = plot_request(get_command(request_text), get_country(request_text), get_days(request_text))
+        send_photo(update, context, plot_file_url)
+    except (CommandError, CountryError, DaysError, PlottingError) as e:
+        send_error(update, context, str(e))
 
-    country = get_country(message)
+def plot_request(command, country, days):
+    return CommandPlotter().execute(command, country, days)
 
-    if not country in country_names():
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Sorry, that's not a place I know about.");
-        return
-
-    days_ago = get_days(message)
-
-    if not days_ago in range(0,8):
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Hmmm, I don't think I can go back that far.")
-        return
-
-    send_text(update, context, "Plotting... Please wait for me :)")
-    plotting_options = {'command_type': command_type, 'country': country, 'days_ago': days_ago}
-    plot_request(plotting_options)
-    send_photo(update, context, get_photo(plotting_options))
-
-def plot_request(options):
-    plotter = CommandPlotter()
-    plotter.execute(options['command_type'], options['country'], options['days_ago'])
-
-def plot_total_image_path():
-    return pathlib.Path(CURRENT_PATH , 'plot', 'total', '{} {} - {}.png')
-
-def plot_default_image_path(command_type):
-    return pathlib.Path(CURRENT_PATH , 'plot', command_type, '{} - {}.png')
-
-def get_total_photo(options):
-    return open(str(plot_total_image_path()).format(options['country'], options['days_ago'], datetime.now().strftime("%m-%d-%y")), 'rb')
-
-def get_default_photo(options):
-    return open(str(plot_default_image_path(options['command_type'])).format(options['country'], datetime.now().strftime("%m-%d-%y")), 'rb')
-
-def get_photo(options):
-    if options['command_type'] == 'total':
-        return get_total_photo(options)
-    return get_default_photo(options)
+def send_error(update, context, message):
+    error_message = "Oops, an error ocurred: " + message
+    context.bot.send_message(chat_id=update.effective_chat.id, text=error_message);
 
 def send_text(update, context, message):
     context.bot.send_message(chat_id=update.effective_chat.id, text=message);
@@ -120,6 +91,7 @@ def main():
 
     dispatcher = updater.dispatcher
 
+    dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("info", info))
     dispatcher.add_handler(MessageHandler(Filters.text, plot))
 

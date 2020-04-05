@@ -4,13 +4,19 @@ country_label="$(tr [A-Z] [a-z] <<< "$1")"
 pwd=$(pwd)
 
 gnuplot <<- EOF
+  set print "-"
+
   data_file_name = 'total_history.csv'
 
   time_format = '%m-%d-%y'
 
   today_date = strftime(time_format, time(0)-18000)
 
-  set output sprintf('${pwd}/plot/new/${country_label} - %s.png', today_date)
+  output_file_relative_path = sprintf('plots/new/${country_label} - %s.png', today_date)
+
+  output_file_name = sprintf('${pwd}/%s', output_file_relative_path)
+
+  set output output_file_name
 
   set datafile separator ','
 
@@ -94,4 +100,7 @@ gnuplot <<- EOF
   data_file_name using (not_earlier_than_first_day(stringcolumn(1))):(delta(column('${country_label}'))) w boxes lc rgb 'blue' ti 'New confirmed cases', \
   \
   '' using (not_earlier_than_first_day(stringcolumn(1))):(delta(column('${country_label}'))):(previous(column('${country_label}'))) with labels textcolor rgb 'grey' font ', 7' offset char 0,1 notitle, 
+
+
+  print("${HOST}".output_file_relative_path)
 EOF

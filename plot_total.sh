@@ -5,13 +5,19 @@ days_ago=${2}
 pwd=$(pwd)
 
 gnuplot <<- EOF
+  set print "-"
+
   data_file_name = 'total_history.csv'
 
   time_format = '%m-%d-%y'
 
   today_date = strftime(time_format, time(0)-18000)
 
-  set output sprintf('${pwd}/plot/total/${country_label} ${days_ago} - %s.png', today_date)
+  output_file_relative_path = sprintf('plots/total/${country_label} ${days_ago} - %s.png', today_date)
+
+  output_file_name = sprintf('${pwd}/%s', output_file_relative_path)
+
+  set output output_file_name
 
   set datafile separator ','
 
@@ -146,4 +152,7 @@ gnuplot <<- EOF
   B using (A[\$1]):(B[\$1]):(sprintf('%.0f', B[\$1])) every days_plotted with labels textcolor rgb 'orange' font ', 8' offset char 0,2 notitle, \
   \
   '' using 1:'${country_label}' ti '    ' lc rgb '#00000000' ps 0
+
+
+  print("${HOST}".output_file_relative_path)
 EOF

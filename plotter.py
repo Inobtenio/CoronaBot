@@ -4,6 +4,7 @@ import json
 import pandas
 import pathlib
 import requests
+import subprocess
 
 CURRENT_PATH = pathlib.Path(__file__).parent.absolute()
 LOCAL_COUNTRY = 'peru'
@@ -12,6 +13,9 @@ COUNTRIES_JSON_PATH = pathlib.Path(CURRENT_PATH, 'countries.json')
 DEFAULT_API_ENDPOINT = 'https://coronavirus-19-api.herokuapp.com/countries'
 FALLBACK_API_ENDPOINT = 'https://thevirustracker.com/free-api?countryTotal={}'
 ENDPOINT_HEADERS = {'User-Agent': 'CoronaBot'}
+
+def decode(bytes):
+    return bytes.decode().strip()
 
 class Plotter(object):
 
@@ -49,16 +53,21 @@ class Plotter(object):
         self.modify_data()
         self.write_csv()
 
+    def run_command(self):
+        return subprocess.run(['bash', self.BASH_COMMAND, self.country_name()], stdout=subprocess.PIPE)
+
     def plot(self):
-        os.system(self.BASH_COMMAND.format(self.country_name()))
+        result = self.run_command()
+        if result.returncode == 1: raise PlottingError('Unknown')
+        return decode(result.stdout)
 
 
 class TotalPlotter(Plotter):
-    BASH_COMMAND = 'bash plot_total.sh "{}" "{}"'
+    BASH_COMMAND = 'plot_total.sh'
     DATAFILE_PATH = pathlib.Path(CURRENT_PATH, 'total_history.csv')
 
     def __init__(self, country, days):
-        self.days = days
+        self.days = str(days)
         super().__init__(country)
 
     def country_total_cases(self):
@@ -85,22 +94,22 @@ class TotalPlotter(Plotter):
 
         self.write_csv()
 
-    def plot(self):
-        os.system(self.BASH_COMMAND.format(self.country_name(), self.days))
+    def run_command(self):
+        return subprocess.run(['bash', self.BASH_COMMAND, self.country_name(), self.days], stdout=subprocess.PIPE)
 
 
 class NewCasesPlotter(TotalPlotter):
-    BASH_COMMAND = 'bash plot_new.sh "{}"'
+    BASH_COMMAND = 'plot_new.sh'
 
     def __init__(self, country):
         super().__init__(country, 0)
 
-    def plot(self):
-        os.system(self.BASH_COMMAND.format(self.country_name()))
+    def run_command(self):
+        return subprocess.run(['bash', self.BASH_COMMAND, self.country_name()], stdout=subprocess.PIPE)
 
 
 class DeathsPlotter(Plotter):
-    BASH_COMMAND = 'bash plot_deaths.sh "{}"'
+    BASH_COMMAND = 'plot_deaths.sh'
     DATAFILE_PATH = pathlib.Path(CURRENT_PATH, 'deaths_history.csv')
 
     def country_total_deaths(self):
@@ -110,8 +119,8 @@ class DeathsPlotter(Plotter):
         self.dataframe.at[self.dataframe.shape[0]-1, "{}".format(self.country)] = self.country_total_deaths()
 
 
-class RecoveriesPlotter(Plotter):
-    BASH_COMMAND = 'bash plot_recovered.sh "{}"'
+class RecoveredPlotter(Plotter):
+    BASH_COMMAND = 'plot_recovered.sh'
     DATAFILE_PATH = pathlib.Path(CURRENT_PATH, 'recovered_history.csv')
 
     def country_total_recovered(self):
@@ -121,15 +130,40 @@ class RecoveriesPlotter(Plotter):
         self.dataframe.at[self.dataframe.shape[0]-1, "{}".format(self.country)] = self.country_total_recovered()
 
 
+class PlottingError(Exception):
+    pass
+
+class CommandError(Exception):
+    pass
+
+class CountryError(Exception):
+    pass
+
+class DaysError(Exception):
+    pass
+
+
+class CommandValidator(object):
+    VALID_COMMANDS = ['total', 'new', 'deaths', 'recovered']
+    with open(COUNTRIES_JSON_PATH, 'rb') as file:
+        COUNTRY_NAMES = [*json.load(file).keys()]
+
+    def validate(command, country, days):
+        if not command in CommandValidator.VALID_COMMANDS: raise CommandError(f"I don't know that command. Accepted ones are {CommandValidator.VALID_COMMANDS}.")
+        if not country in CommandValidator.COUNTRY_NAMES: raise CountryError("That's a country I have no data for.")
+        if not days in range(0,8): raise DaysError("I can not go that far back.")
+
+
 class CommandPlotter:
     def execute(self, command, country, days):
         plotter = factory.get_command_plotter(command, country, days)
         plotter.update_data()
-        plotter.plot()
+        return plotter.plot()
 
 
 class CommandPlotterFactory:
     def get_command_plotter(self, command, country, days):
+        CommandValidator.validate(command, country, days)
         if command == 'total':
             return TotalPlotter(country, days)
         if command == 'new':
@@ -137,8 +171,6 @@ class CommandPlotterFactory:
         if command == 'deaths':
             return DeathsPlotter(country)
         if command == 'recovered':
-            return RecoveriesPlotter(country)
-        else:
-            return ValueError(command)
+            return RecoveredPlotter(country)
 
 factory = CommandPlotterFactory()
